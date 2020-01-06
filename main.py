@@ -29,10 +29,14 @@ def main():
     # Data loading code
     print("=> creating data loaders...")
     valdir = os.path.join('..', 'data', args.data, 'val')
+    #valdir ="/home/titan-nano/Documents/DLProject/data/rgbd/val/img"
 
     if args.data == 'nyudepthv2':
         from dataloaders.nyu import NYUDataset
         val_dataset = NYUDataset(valdir, split='val', modality=args.modality)
+    elif args.data == 'rgbd':
+        from dataloaders.nyu import RGBDDataset
+        val_dataset = RGBDDataset(valdir, split='val', modality=args.modality)
     else:
         raise RuntimeError('Dataset not found.')
 
@@ -83,7 +87,7 @@ def validate(val_loader, model, epoch, write_to_file=True):
         end = time.time()
 
         # save 8 images for visualization
-        skip = 50
+        skip = 3#50
 
         if args.modality == 'rgb':
             rgb = input
@@ -95,6 +99,7 @@ def validate(val_loader, model, epoch, write_to_file=True):
             img_merge = utils.add_row(img_merge, row)
         elif i == 8*skip:
             filename = output_directory + '/comparison_' + str(epoch) + '.png'
+            print('save images as: ',filename)
             utils.save_image(img_merge, filename)
 
         if (i+1) % args.print_freq == 0:

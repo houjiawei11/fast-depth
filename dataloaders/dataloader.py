@@ -10,6 +10,8 @@ def h5_loader(path):
     rgb = np.array(h5f['rgb'])
     rgb = np.transpose(rgb, (1, 2, 0))
     depth = np.array(h5f['depth'])
+    print(rgb.shape)
+    print(depth)
     return rgb, depth
 
 # def rgb2grayscale(rgb):
@@ -17,9 +19,8 @@ def h5_loader(path):
 
 class MyDataloader(data.Dataset):
     modality_names = ['rgb']
-
     def is_image_file(self, filename):
-        IMG_EXTENSIONS = ['.h5']
+        IMG_EXTENSIONS = ['.h5', '.png'] #TODO: maybe other types
         return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
 
     def find_classes(self, dir):
@@ -30,6 +31,7 @@ class MyDataloader(data.Dataset):
 
     def make_dataset(self, dir, class_to_idx):
         images = []
+        images_dep =[]
         dir = os.path.expanduser(dir)
         for target in sorted(os.listdir(dir)):
             d = os.path.join(dir, target)
@@ -40,18 +42,26 @@ class MyDataloader(data.Dataset):
                     if self.is_image_file(fname):
                         path = os.path.join(root, fname)
                         item = (path, class_to_idx[target])
-                        images.append(item)
-        return images
+                        print(fname)
+                        if(fname.find("depth") != -1):
+                            images_dep.append(item)
+                            self.with_depimg=True
+                        else:
+                            images.append(item)
+        return images, images_dep
 
     color_jitter = transforms.ColorJitter(0.4, 0.4, 0.4)
 
     def __init__(self, root, split, modality='rgb', loader=h5_loader):
+        self.with_depimg=False
         classes, class_to_idx = self.find_classes(root)
-        imgs = self.make_dataset(root, class_to_idx)
+        imgs,imgds = self.make_dataset(root, class_to_idx)
+        print(imgs)
         assert len(imgs)>0, "Found 0 images in subfolders of: " + root + "\n"
         # print("Found {} images in {} folder.".format(len(imgs), split))
         self.root = root
         self.imgs = imgs
+        self.imgds = imgds
         self.classes = classes
         self.class_to_idx = class_to_idx
         if split == 'train':
@@ -83,8 +93,13 @@ class MyDataloader(data.Dataset):
         Returns:
             tuple: (rgb, depth) the raw data.
         """
-        path, target = self.imgs[index]
-        rgb, depth = self.loader(path)
+        if(self.with_depimg==False):
+            path, target = self.imgs[index]
+            rgb, depth = self.loader(path)
+        else:
+            path, target = self.imgs[index]
+            pathd, targetd = self.imgds[index]
+            rgb, depth = self.loader(path,pathd)
         return rgb, depth
 
     def __getitem__(self, index):
@@ -112,3 +127,5 @@ class MyDataloader(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+    
+    
